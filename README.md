@@ -1,0 +1,2 @@
+# clear-link-tool
+mock
