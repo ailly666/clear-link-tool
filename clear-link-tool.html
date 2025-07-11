@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>一键生成清缓存链接</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      resize: none;
+      font-size: 14px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 24px;
+      margin-bottom: 6px;
+    }
+
+    .copy-btn {
+      padding: 4px 10px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover {
+      background-color: #e0e0e0;
+    }
+
+    .success-msg {
+      color: green;
+      font-size: 13px;
+      margin-top: 4px;
+      display: none;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    .env-toggle {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .env-toggle input[type="radio"] {
+      display: none;
+    }
+
+    .env-toggle label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .env-toggle label::before {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      margin-right: 6px;
+      box-sizing: border-box;
+    }
+
+    .env-toggle input[type="radio"]:checked + label {
+      color: #1677ff;
+    }
+
+    .env-toggle input[type="radio"]:checked + label::before {
+      border-color: #1677ff;
+      background-color: #1677ff;
+      box-shadow: inset 0 0 0 3px white;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🔐 一键模拟登录</h2>
+
+  <div class="env-toggle">
+    <input type="radio" id="env-prod" name="env" value="prod" onchange="reloadPage()" />
+    <label for="env-prod">正式环境</label>
+
+    <input type="radio" id="env-test" name="env" value="test" onchange="reloadPage()" />
+    <label for="env-test">测试环境</label>
+  </div>
+
+  <label>输入模拟登录的用户 ID：</label><br>
+  <input id="hashedId" type="text" placeholder="请输入加密后的用户 ID"><br><br>
+
+  <button onclick="generate()">生成链接</button><br>
+
+  <div id="resultDiv" style="display:none;">
+    <div class="section-header">
+      <span>🚀 第一步：清缓存</span>
+      <button class="copy-btn" onclick="copyToClipboard('finalLink', 'copySuccessFinal')">📋 复制</button>
+    </div>
+    <textarea id="finalLink" rows="10" readonly></textarea>
+    <div id="copySuccessFinal" class="success-msg">✅ 已复制清缓存链接！</div>
+
+    <div class="section-header">
+      <span>🧪 模拟登录</span>
+      <button class="copy-btn" onclick="copyToClipboard('prefixLink', 'copySuccessPrefix')">📋 复制</button>
+    </div>
+    <textarea id="prefixLink" rows="2" readonly></textarea>
+    <div id="copySuccessPrefix" class="success-msg">✅ 已复制模拟登录链接！</div>
+
+    <div class="section-header" style="margin-top: 32px;">
+      <span>🧩 一键复制全部</span>
+      <button class="copy-btn" onclick="copyAll()">📋 复制第一步+第二步</button>
+    </div>
+    <div id="copySuccessAll" class="success-msg">✅ 已复制全部内容！</div>
+  </div>
+
+  <script>
+    function getSelectedEnvUrl() {
+      const env = document.querySelector('input[name="env"]:checked').value;
+      return env === 'prod'
+        ? 'https://kpapi0.ckjr001.com/api/mp/tymonTokenByHashedUserId/'
+        : 'https://kpapi-cs.ckjr001.com/api/mp/tymonTokenByHashedUserId/';
+    }
+
+    function reloadPage() {
+      const env = document.querySelector('input[name="env"]:checked').value;
+      localStorage.setItem('env', env);
+      location.reload();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedEnv = localStorage.getItem('env') || 'prod';
+      const envInput = document.getElementById(`env-${savedEnv}`);
+      if (envInput) envInput.checked = true;
+    });
+
+    async function generate() {
+      const hashedId = document.getElementById('hashedId').value.trim();
+      if (!hashedId) {
+        alert('请输入加密 ID');
+        return;
+      }
+
+      const baseApi = getSelectedEnvUrl();
+      const apiUrl = `${baseApi}${hashedId}`;
+
+      try {
+        const res = await fetch(apiUrl);
+        const rawLink = (await res.text()).trim();
+        const content1 = 'clearLocalStorage';
+        const content2 = '&fromckjr2=2';
+
+        const marker = '/?#/';
+        if (!rawLink.includes(marker)) {
+          alert('未找到用户，请检查下用户ID或环境是否匹配');
+          return;
+        }
+
+        const idx = rawLink.indexOf(marker) + marker.length;
+        const prefixWithHash = rawLink.slice(0, idx);
+        const hashRest = rawLink.slice(idx);
+
+        const final = prefixWithHash + content1 + hashRest + content2;
+
+        document.getElementById('finalLink').value = final;
+        document.getElementById('prefixLink').value = prefixWithHash;
+        document.getElementById('resultDiv').style.display = 'block';
+        hideCopyMessages();
+      } catch (e) {
+        alert('接口请求失败：' + e);
+      }
+    }
+
+    function copyToClipboard(id, successId) {
+      const el = document.getElementById(id);
+      el.select();
+      el.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+
+      hideCopyMessages();
+      document.getElementById(successId).style.display = "block";
+      setTimeout(() => {
+        document.getElementById(successId).style.display = "none";
+      }, 2000);
+    }
+
+    function copyAll() {
+  const first = document.getElementById('finalLink').value;
+  const second = document.getElementById('prefixLink').value;
+  const combined = `【第一步：清缓存】\n${first}\n\n【第二步：模拟登录】\n${second}`;
+
+  const temp = document.createElement("textarea");
+  temp.value = combined;
+  document.body.appendChild(temp);
+  temp.select();
+  document.execCommand("copy");
+  document.body.removeChild(temp);
+
+  hideCopyMessages();
+  document.getElementById('copySuccessAll').style.display = "block";
+  setTimeout(() => {
+    document.getElementById('copySuccessAll').style.display = "none";
+  }, 2000);
+}
+
+    function hideCopyMessages() {
+      document.getElementById('copySuccessFinal').style.display = 'none';
+      document.getElementById('copySuccessPrefix').style.display = 'none';
+      document.getElementById('copySuccessAll').style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>
